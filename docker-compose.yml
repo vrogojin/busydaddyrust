@@ -4,11 +4,14 @@ services:
   lgsm:
     # Limiting server resources
     cpu_count: 2
-    mem_limit: 8gb
+    mem_limit: 12gb
     # other stuf
     init: true
     user: root
-    image: gameservermanagers/linuxgsm-docker
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rust-server-custom:latest
     # Do not change this from restart: always. Maintenance scripts assume
     # docker-compose auto restarts the rust server.
     restart: always

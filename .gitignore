@@ -1,4 +1,5 @@
 /*.tgz
-/backups
+backups
 /plugins.txt
 .venv
+rust_prod_env_*

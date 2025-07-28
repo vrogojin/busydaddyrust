@@ -4,11 +4,11 @@
 
 # settings take effect every time the server boots
 
-#maxplayers=50
-#servername="Rust"
+maxplayers=50
+servername="BusyDaddyRust-dev"
 
 # uncomment this to enable EAC, for Linux clients this must be commented out
-#ENABLE_RUST_EAC=1
+ENABLE_RUST_EAC=1
 
 #######################
 # GENERATED MAP SUPPORT
@@ -25,7 +25,7 @@
 #salt=
 
 # default: 3000, range: 1000-6000, map size in meters.
-#worldsize=3000
+worldsize=4500
 
 ####################
 # CUSTOM MAP SUPPORT
