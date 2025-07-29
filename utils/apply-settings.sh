@@ -8,7 +8,7 @@ fi
 
 [ ! -r /rust-environment.sh ] || source /rust-environment.sh
 export ENABLE_RUST_EAC CUSTOM_MAP_URL MAP_BASE_URL SELF_HOST_CUSTOM_MAP
-export seed salt worldsize maxplayers servername apply_settings_debug_mode
+export seed salt worldsize maxplayers servername apply_settings_debug_mode GAMEMODE
 if [ "${apply_settings_debug_mode:-false}" = true ]; then
   echo 'docker compose apply config debug enabled.' >&2
   set -x
@@ -159,3 +159,21 @@ fi
 (
   grep "$(<rcon_pass)" "$lgsm_cfg" || echo rconpassword="$(<rcon_pass)" >> "$lgsm_cfg"
 ) &> /dev/null
+
+# Ensure game mode is set in server.cfg
+SERVER_CFG="/home/linuxgsm/serverfiles/server/rustserver/cfg/server.cfg"
+if [ -f "$SERVER_CFG" ]; then
+  # Remove any existing gamemode lines
+  sed -i '/^server\.gamemode/d' "$SERVER_CFG" 2>/dev/null || true
+  
+  # Apply gamemode if set
+  if [ -n "${GAMEMODE:-}" ]; then
+    echo "Applying game mode: $GAMEMODE to server.cfg..."
+    echo "server.gamemode $GAMEMODE" >> "$SERVER_CFG"
+    echo "Game mode applied successfully"
+  else
+    echo "No game mode specified, using default (vanilla)"
+  fi
+else
+  echo "Warning: server.cfg not found at $SERVER_CFG - game mode will be set on first server start"
+fi

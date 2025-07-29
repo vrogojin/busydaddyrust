@@ -55,3 +55,9 @@ worldsize=4500
 # want the container to die when rust shuts down or crashes, then disable this
 # monitoring.
 uptime_monitoring=true
+
+# Game mode setting. Options: vanilla, hardcore, softcore
+# Leave empty or comment out for default (vanilla) mode
+# Note: hardcore mode disables map, Rust+, limits sleeping bags to 5, 
+# makes tech tree more expensive, and enables local chat only (100m radius)
+GAMEMODE=hardcore

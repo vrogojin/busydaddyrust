@@ -74,6 +74,7 @@ services:
       - ${RUST_RCON_INTERFACE:-127.0.0.1}:28016:28016
       - 0.0.0.0:28015:28015/udp
       - 0.0.0.0:8000:8000/tcp
+      - 0.0.0.0:8888:8888/tcp  # WebRustPlus web interface
     healthcheck:
       test: ["CMD", "pgrep", "RustDedicated"]
       interval: 10s
