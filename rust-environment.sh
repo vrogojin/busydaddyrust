@@ -25,7 +25,8 @@ ENABLE_RUST_EAC=1
 #salt=
 
 # default: 3000, range: 1000-6000, map size in meters.
-worldsize=4500
+# This value can be overridden by setting WORLDSIZE in .env file
+worldsize=${WORLDSIZE:-3500}
 
 ####################
 # CUSTOM MAP SUPPORT

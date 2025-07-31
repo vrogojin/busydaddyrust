@@ -95,9 +95,7 @@ if [ -f "$IMPORT_DIR/configs/rust-environment.sh" ]; then
     IMPORT_MAXPLAYERS=$(grep "^export maxplayers=" "$IMPORT_DIR/configs/rust-environment.sh" | cut -d'=' -f2)
     IMPORT_SERVERNAME=$(grep "^export servername=" "$IMPORT_DIR/configs/rust-environment.sh" | cut -d'"' -f2)
     
-    # Update worldsize to 6000 (as required)
-    sed -i 's/^export worldsize=.*/export worldsize=6000/' "$ROOT_DIR/rust-environment.sh" 2>/dev/null || \
-    sed -i '' 's/^export worldsize=.*/export worldsize=6000/' "$ROOT_DIR/rust-environment.sh"
+    # Keep existing worldsize configuration (now handled via .env file)
     
     # Update other settings if found
     if [ -n "$IMPORT_MAXPLAYERS" ]; then
@@ -105,7 +103,7 @@ if [ -f "$IMPORT_DIR/configs/rust-environment.sh" ]; then
         sed -i '' "s/^export maxplayers=.*/export maxplayers=$IMPORT_MAXPLAYERS/" "$ROOT_DIR/rust-environment.sh"
     fi
     
-    echo "   - Updated server configuration (worldsize set to 6000)"
+    echo "   - Updated server configuration"
 fi
 
 # Import LinuxGSM configs if available and server is running
@@ -235,7 +233,7 @@ if [ -n "$CONTAINER_ID" ] && [ -n "$SUCCESS_COUNT" ]; then
     [ "$FAIL_COUNT" -gt 0 ] && echo "✗ Permissions failed: $FAIL_COUNT"
 fi
 
-echo "✓ Server config updated (worldsize: 6000)"
+echo "✓ Server config updated"
 
 echo ""
 echo "Next steps:"

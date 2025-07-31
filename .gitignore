@@ -3,3 +3,4 @@ backups
 /plugins.txt
 .venv
 rust_prod_env_*
+.env
