@@ -128,61 +128,18 @@ if [ -n "$CONTAINER_ID" ]; then
     
     # Import default group permissions
     if [ -f "$IMPORT_DIR/permissions/default_permissions.txt" ]; then
-        echo "   - Importing default group permissions..."
+        echo "   - Found permissions file to import"
         
-        # Count permissions to import
-        PERM_COUNT=$(wc -l < "$IMPORT_DIR/permissions/default_permissions.txt" 2>/dev/null || echo "0")
-        echo "   - Found $PERM_COUNT permissions to import"
-        
-        if [ "$PERM_COUNT" -eq 0 ]; then
-            echo "   - Warning: Permission file exists but is empty"
+        # Use the apply-permissions.sh script for consistent and reliable permission application
+        if [ -x "$SCRIPT_DIR/apply-permissions.sh" ]; then
+            echo "   - Calling apply-permissions.sh to import permissions..."
+            echo ""
+            "$SCRIPT_DIR/apply-permissions.sh" "$IMPORT_DIR/permissions/default_permissions.txt"
+            echo ""
         else
-            # Show first few permissions for verification
-            echo "   - First few permissions to import:"
-            head -5 "$IMPORT_DIR/permissions/default_permissions.txt" | sed 's/^/     - /'
-            [ "$PERM_COUNT" -gt 5 ] && echo "     - ... and $((PERM_COUNT - 5)) more"
-            
-            # First, ensure default group exists (it should always exist but just in case)
-            echo "   - Ensuring default group exists..."
-            "$SCRIPT_DIR/rcon.sh" "oxide.group add default" 2>/dev/null || true
-            
-            # Clear existing permissions for default group (optional - uncomment if needed)
-            # echo "   - Clearing existing default group permissions..."
-            # "$SCRIPT_DIR/rcon.sh" "oxide.revoke group default *" 2>/dev/null || true
-            
-            # Import each permission
-            SUCCESS_COUNT=0
-            FAIL_COUNT=0
-            echo "   - Granting permissions to default group..."
-            while IFS= read -r permission; do
-                # Trim whitespace
-                permission=$(echo "$permission" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-                
-                if [ -n "$permission" ] && [[ "$permission" =~ ^[a-zA-Z0-9][a-zA-Z0-9\.]*$ ]]; then
-                    if "$SCRIPT_DIR/rcon.sh" "oxide.grant group default $permission" >/dev/null 2>&1; then
-                        echo "     ✓ Granted: $permission"
-                        ((SUCCESS_COUNT++))
-                    else
-                        echo "     ✗ Failed: $permission"
-                        ((FAIL_COUNT++))
-                    fi
-                else
-                    echo "     - Skipping invalid permission: '$permission'"
-                fi
-            done < "$IMPORT_DIR/permissions/default_permissions.txt"
-            
-            echo "   - Permission import complete: $SUCCESS_COUNT succeeded, $FAIL_COUNT failed"
-            
-            # Verify permissions were applied
-            echo "   - Verifying permissions..."
-            "$SCRIPT_DIR/rcon.sh" "oxide.show group default" > "$IMPORT_DIR/verify_permissions.txt" 2>&1
-            
-            # Check if permissions were applied
-            if grep -q "permissions:" "$IMPORT_DIR/verify_permissions.txt"; then
-                echo "   - Permissions verified successfully"
-            else
-                echo "   - Warning: Could not verify permissions"
-            fi
+            echo "   - Error: apply-permissions.sh not found or not executable"
+            echo "   - Please run: chmod +x $SCRIPT_DIR/apply-permissions.sh"
+            echo "   - Then manually apply permissions with: $SCRIPT_DIR/apply-permissions.sh $IMPORT_DIR/permissions/default_permissions.txt"
         fi
     else
         echo "   - No default group permissions found in package"
@@ -227,11 +184,7 @@ if [ -d "$ROOT_DIR/mod-configs" ]; then
     echo "✓ Plugin configs imported: $CONFIG_COUNT"
 fi
 
-# Show permission count if server was running
-if [ -n "$CONTAINER_ID" ] && [ -n "$SUCCESS_COUNT" ]; then
-    echo "✓ Permissions granted: $SUCCESS_COUNT"
-    [ "$FAIL_COUNT" -gt 0 ] && echo "✗ Permissions failed: $FAIL_COUNT"
-fi
+# Note: Permission count is shown by apply-permissions.sh if it was called
 
 echo "✓ Server config updated"
 
