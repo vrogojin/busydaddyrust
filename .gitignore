@@ -4,3 +4,4 @@ backups
 .venv
 rust_prod_env_*
 .env
+*.backup
