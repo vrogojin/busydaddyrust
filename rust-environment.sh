@@ -5,7 +5,8 @@
 # settings take effect every time the server boots
 
 maxplayers=50
-servername="BusyDaddyRust-dev"
+# This value can be overridden by setting SERVERNAME in .env file
+servername="${SERVERNAME:-BusyDaddyRust-dev}"
 
 # uncomment this to enable EAC, for Linux clients this must be commented out
 ENABLE_RUST_EAC=1
