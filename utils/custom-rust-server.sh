@@ -6,6 +6,10 @@
 
 set -ex
 
+# Export Docker environment variables for child processes
+export SERVERNAME="${SERVERNAME}"
+export WORLDSIZE="${WORLDSIZE}"
+
 [ -f ./linuxgsm.sh ] || (
   if [ -n "${LINUX_GSM_VERSION:-}" ]; then
     curl -fLo linuxgsm.sh \
@@ -30,8 +34,9 @@ fi
 sudo rm -f /etc/sudoers.d/lgsm
 
 lgsm_cfg=lgsm/config-lgsm/rustserver/rustserver.cfg
-grep -F -- /utils/apply-settings.sh "$lgsm_cfg" ||
-  echo 'if [ ! "$1" = docker ]; then /utils/apply-settings.sh; source lgsm/config-lgsm/rustserver/rustserver.cfg docker; fi' >> "$lgsm_cfg"
+# Remove old apply-settings line and add new one with environment variables
+sed -i '/apply-settings.sh/d' "$lgsm_cfg" 2>/dev/null || true
+echo 'if [ ! "$1" = docker ]; then SERVERNAME="'"${SERVERNAME}"'" WORLDSIZE="'"${WORLDSIZE}"'" /utils/apply-settings.sh; source lgsm/config-lgsm/rustserver/rustserver.cfg docker; fi' >> "$lgsm_cfg"
 /utils/get-or-update-plugins.sh
 /utils/monitor-rust-server.sh &
 

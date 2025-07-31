@@ -7,6 +7,10 @@ if ! type -p python && type -p python3; then
 fi
 
 [ ! -r /rust-environment.sh ] || source /rust-environment.sh
+# Prefer uppercase environment variables over lowercase ones from rust-environment.sh
+servername="${SERVERNAME:-${servername:-Rust}}"
+worldsize="${WORLDSIZE:-${worldsize:-3500}}"
+maxplayers="${MAXPLAYERS:-${maxplayers:-50}}"
 export ENABLE_RUST_EAC CUSTOM_MAP_URL MAP_BASE_URL SELF_HOST_CUSTOM_MAP
 export seed salt worldsize maxplayers servername apply_settings_debug_mode GAMEMODE
 if [ "${apply_settings_debug_mode:-false}" = true ]; then
@@ -66,7 +70,7 @@ function apply-setting() {
 
 function apply-generated-map-settings() {
   if [ -z "$worldsize" ] || ! check-range "$worldsize" 1000 6000; then
-    worldsize=3000
+    worldsize=3500
   fi
   # apply user-customized settings from rust-environment.sh
   apply-setting "$lgsm_cfg" worldsize "worldsize=$worldsize"
@@ -89,7 +93,6 @@ function apply-generated-map-settings() {
   fi
 }
 
-servername="${servername:-Rust}"
 apply-setting "$lgsm_cfg" servername "servername=\"$servername\""
 if [ -z "$maxplayers" ] || ! check-range "$maxplayers" 1 1000000; then
   maxplayers=50
