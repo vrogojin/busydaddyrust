@@ -200,12 +200,9 @@ echo "5. Exporting server configuration..."
 # Copy rust-environment.sh
 cp "$ROOT_DIR/rust-environment.sh" "$EXPORT_DIR/configs/rust-environment.sh"
 
-# Ensure worldsize is set to 6000 in the exported config
-sed -i 's/^export worldsize=.*/export worldsize=6000/' "$EXPORT_DIR/configs/rust-environment.sh" 2>/dev/null || \
-sed -i '' 's/^export worldsize=.*/export worldsize=6000/' "$EXPORT_DIR/configs/rust-environment.sh" 2>/dev/null || \
-echo "export worldsize=6000" >> "$EXPORT_DIR/configs/rust-environment.sh"
+# Keep existing worldsize configuration
 
-echo "   - Exported server configuration (worldsize set to 6000)"
+echo "   - Exported server configuration"
 
 # Export server settings from container if available
 if [ -n "$CONTAINER_ID" ]; then
@@ -232,7 +229,7 @@ Server Name: $(grep "export servername=" "$ROOT_DIR/rust-environment.sh" | cut -
 Contents:
 - Non-admin plugins and configurations
 - Default group permissions
-- Server configuration (worldsize: 6000)
+- Server configuration
 - LinuxGSM configurations
 
 To import this package, use:
