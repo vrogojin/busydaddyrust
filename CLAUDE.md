@@ -80,6 +80,21 @@ docker compose logs -f
 # Access custom map server: http://localhost:8000
 ```
 
+### Server Validation & Health
+```bash
+# Validate game files (stops/restarts server)
+./admin/validate-server.sh
+
+# Check validation status and crash history
+./admin/validation-status.sh
+
+# Export production environment (plugins, permissions, configs)
+./admin/export_prod_env.sh
+
+# Import production environment
+./admin/import_prod_env.sh [package-file]
+```
+
 ## Architecture Overview
 
 ### Container Architecture
@@ -107,7 +122,10 @@ docker compose logs -f
    - Extracts C# class names from plugin files
    - Syncs custom plugins and removes outdated ones
 
-4. **utils/monitor-rust-server.sh**: Health monitoring that triggers container restart on crash
+4. **utils/monitor-rust-server-enhanced.sh**: Advanced health monitoring with crash tracking:
+   - Tracks crashes and triggers validation after 3 crashes in 24 hours
+   - Logs crashes to `/home/linuxgsm/log/crash-tracker.log`
+   - Creates validation marker file when threshold reached
 
 ### Directory Structure
 ```
@@ -168,7 +186,7 @@ mem_limit: 12gb     # Memory limit
 5. Apply without restart: `./admin/reload-plugins.sh`
 
 ### Console Command Execution
-Three methods available:
+Multiple methods available:
 1. **RCON** - Returns output, works remotely
    ```bash
    ./admin/rcon-command.sh "oxide.version"
@@ -181,6 +199,16 @@ Three methods available:
    ```bash
    ./admin/console-command-with-output.sh "plugins"
    ```
+4. **Interactive RCON** - Direct RCON shell access
+   ```bash
+   ./admin/rcon.sh
+   # Or specific command: ./admin/rcon.sh "oxide.plugins"
+   ```
+5. **Docker RCON** - Alternative RCON methods
+   ```bash
+   ./admin/docker-rcon-command.sh "command"
+   ./admin/docker-rcon-reload.sh  # Reload all plugins
+   ```
 
 ### Debugging Issues
 1. **Check logs**: 
@@ -188,17 +216,26 @@ Three methods available:
    docker compose logs -f
    ./admin/shell.sh
    tail -f /home/linuxgsm/log/script/rustserver-script.log
+   tail -f /home/linuxgsm/log/autoheal.log      # Monitor crashes
+   tail -f /home/linuxgsm/log/crash-tracker.log # Crash timestamps
    ```
 2. **LinuxGSM commands** (inside container):
    ```bash
    ./rustserver details
    ./rustserver monitor
    ./rustserver console
+   ./rustserver validate  # Validate game files
    ```
 3. **Plugin issues**: 
    ```bash
    ./admin/bugfix-oxide-plugins.sh  # Fix Linux compatibility
    ./admin/reload-plugins.sh         # Reload all plugins
+   ./admin/get-or-update-oxide-plugins.sh  # Update/sync plugins
+   ```
+4. **Permission management**:
+   ```bash
+   ./admin/apply-permissions.sh      # Apply permissions from files
+   ./admin/apply-permissions-fast.sh # Quick permission application
    ```
 
 ## Important Implementation Details
@@ -211,10 +248,12 @@ Three methods available:
 
 ### Startup Sequence
 1. Container starts with temporary sudo for setup
-2. Installs dependencies and creates Python venv
+2. Installs dependencies and creates Python venv for RCON tools
 3. Drops sudo privileges after setup
 4. Runs custom-rust-server.sh to initialize server
-5. Monitors server health and auto-restarts on crash
+5. Monitors server health with enhanced crash tracking
+6. Auto-validates after 3 crashes in 24 hours
+7. Checks for VALIDATION_NEEDED marker on restart
 
 ### Security Considerations
 - Container runs as non-root user (linuxgsm)
@@ -227,3 +266,10 @@ Three methods available:
 - Game files in: `/home/linuxgsm/serverfiles/`
 - Logs in: `/home/linuxgsm/log/`
 - All server control through LinuxGSM commands
+
+### Environment Export/Import
+The server supports exporting and importing production environments:
+- **Export**: Captures non-admin plugins, permissions, and configurations
+- **Import**: Applies exported settings to a new or existing server
+- Admin plugins (Godmode, Vanish) are excluded from exports for security
+- Useful for migrating settings between development and production servers
