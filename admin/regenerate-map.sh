@@ -28,6 +28,14 @@ docker compose exec -T lgsm \
     -type f \( -name '*.map' -o -name '*.sav*' \) \
     -exec rm -f {} +
 docker compose exec -T lgsm sed -i '/^ *seed=/d' lgsm/config-lgsm/rustserver/rustserver.cfg
+
+echo "Running game file validation after wipe..."
 docker compose down
+
+# Run validation
+echo "Starting game file validation at $(date)"
+docker compose run --rm lgsm bash -c "cd /home/linuxgsm && ./rustserver validate"
+echo "Validation completed at $(date)"
+
 docker compose up -d
-echo 'The server has been rebooted with docker compose up -d.'
+echo 'The server has been rebooted with docker compose up -d after validation.'

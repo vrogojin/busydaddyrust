@@ -124,7 +124,13 @@ echo "5. Downloading and updating plugins..."
 
 if [ -n "$CONTAINER_ID" ]; then
     echo ""
-    echo "6. Importing permissions..."
+    echo "6. Reloading plugins after import..."
+    "$SCRIPT_DIR/rcon.sh" "oxide.reload *"
+    echo "   - All plugins reloaded"
+    sleep 2  # Give plugins time to initialize
+    
+    echo ""
+    echo "7. Importing permissions..."
     
     # Import default group permissions
     if [ -f "$IMPORT_DIR/permissions/default_permissions.txt" ]; then
@@ -146,13 +152,14 @@ if [ -n "$CONTAINER_ID" ]; then
     fi
     
     echo ""
-    echo "7. Reloading plugins..."
+    echo "8. Reloading plugins after permissions..."
     "$SCRIPT_DIR/rcon.sh" "oxide.reload *"
-    echo "   - All plugins reloaded"
+    echo "   - All plugins reloaded with updated permissions"
 else
     echo ""
-    echo "6. Skipping permissions import (server not running)"
-    echo "7. Skipping plugin reload (server not running)"
+    echo "6. Skipping plugin reload (server not running)"
+    echo "7. Skipping permissions import (server not running)"
+    echo "8. Skipping final plugin reload (server not running)"
 fi
 
 # Cleanup

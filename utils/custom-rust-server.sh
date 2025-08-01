@@ -38,7 +38,16 @@ lgsm_cfg=lgsm/config-lgsm/rustserver/rustserver.cfg
 sed -i '/apply-settings.sh/d' "$lgsm_cfg" 2>/dev/null || true
 echo 'if [ ! "$1" = docker ]; then SERVERNAME="'"${SERVERNAME}"'" WORLDSIZE="'"${WORLDSIZE}"'" /utils/apply-settings.sh; source lgsm/config-lgsm/rustserver/rustserver.cfg docker; fi' >> "$lgsm_cfg"
 /utils/get-or-update-plugins.sh
-/utils/monitor-rust-server.sh &
+
+# Check if validation is needed (marker from crash detection)
+if [ -f /home/linuxgsm/VALIDATION_NEEDED ]; then
+  echo "Validation marker found - running game file validation before start"
+  ./rustserver validate
+  rm -f /home/linuxgsm/VALIDATION_NEEDED
+fi
+
+# Use enhanced monitor with crash tracking
+/utils/monitor-rust-server-enhanced.sh &
 
 # start rust server
 ./rustserver start
