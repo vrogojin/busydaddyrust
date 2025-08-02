@@ -1,20 +1,14 @@
 #!/bin/bash
 
-# Get RCON password
-RCON_PASS=$(docker exec $(docker compose ps -q lgsm) cat /home/linuxgsm/serverfiles/server/rustserver/cfg/rconpassword 2>/dev/null)
+# Reload all Oxide plugins using rcon.sh
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-if [ -z "$RCON_PASS" ]; then
-    echo "Could not retrieve RCON password"
+echo "Reloading all Oxide plugins..."
+"$SCRIPT_DIR/rcon.sh" "oxide.reload *"
+
+if [ $? -eq 0 ]; then
+    echo "All plugins reloaded successfully"
+else
+    echo "Failed to reload plugins"
     exit 1
 fi
-
-# Use mcrcon if available, otherwise use rust-rcon or webrcon
-docker exec $(docker compose ps -q lgsm) bash -c "
-if command -v mcrcon &> /dev/null; then
-    echo 'oxide.reload *' | mcrcon -H localhost -P 28016 -p '$RCON_PASS'
-else
-    # Alternative: use LinuxGSM console command
-    echo 'Using LinuxGSM console method...'
-    echo 'oxide.reload *' | timeout 5 ./rustserver console
-fi
-"

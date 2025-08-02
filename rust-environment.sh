@@ -20,7 +20,13 @@ ENABLE_RUST_EAC=1
 #     If you change this value, then a new map will be generated on next boot.
 #     The old map will still persist unless `./admin-actions/regenerate-map.sh`
 #     is called which deletes all maps
-#seed=1
+# This value can be overridden by setting SEED in .env file
+if [ -n "${SEED}" ]; then
+    seed="${SEED}"
+else
+    # If no seed is specified, let Rust use existing world seed or generate random
+    unset seed
+fi
 
 # range: unknown, used to recover a known setting from an existing map.
 #salt=
