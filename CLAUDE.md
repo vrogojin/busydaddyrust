@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Dockerized Rust Dedicated Server using Linux GSM (LinuxGSM) for game server management. It provides a complete solution for hosting Rust game servers with Oxide/uMod plugin support, custom maps, and administrative tools.
+Dockerized Rust Dedicated Server using LinuxGSM for game server management. Provides complete solution for hosting Rust game servers with Oxide/uMod plugin support, custom maps, automated monitoring, and administrative tools.
 
 ## Essential Commands
 
@@ -13,7 +13,7 @@ This is a Dockerized Rust Dedicated Server using Linux GSM (LinuxGSM) for game s
 # Start server
 docker compose up -d
 
-# Stop server
+# Stop server  
 docker compose down
 
 # View logs
@@ -54,6 +54,7 @@ docker compose logs -f
 ./admin/rcon.sh
 
 # Connect via web: http://localhost:28016
+# See admin/RCON_USAGE.md for detailed documentation
 ```
 
 ### Backup Operations
@@ -105,7 +106,7 @@ docker compose logs -f
 
 ### Key Scripts Flow
 1. **docker-compose.yml**: Initializes container with complex startup sequence:
-   - Installs dependencies (dos2unix, rsync, sudo, etc.)
+   - Installs dependencies (dos2unix, rsync, sudo, python3.8-venv, etc.)
    - Sets up Python virtual environment for RCON tools
    - Configures permissions and drops sudo after setup
    
@@ -114,6 +115,7 @@ docker compose logs -f
    - Manages Oxide/uMod installation
    - Downloads RustEdit extension
    - Applies settings from rust-environment.sh
+   - Checks for VALIDATION_NEEDED marker
    - Starts monitoring and launches server
 
 3. **utils/get-or-update-plugins.sh**: Sophisticated plugin manager:
@@ -142,27 +144,34 @@ docker compose logs -f
 │   └── *.json           # Individual plugin configs
 ├── utils/               # Core scripts (read-only in container)
 ├── docker-compose.yml   # Container orchestration
-└── rust-environment.sh  # Main server configuration
+├── rust-environment.sh  # Main server configuration
+└── .env                 # Environment variable overrides
 ```
 
 ### Volume Mapping Strategy
 - **Named volume `lgsm`**: Persistent server data (/home/linuxgsm)
 - **Bind mounts**: Configuration and custom content
 - **Read-only mounts**: utils/ directory to prevent modifications
-- **Port mappings**: 28015/UDP (game), 28016/TCP (RCON), 8000/TCP (maps)
+- **Port mappings**: 28015/UDP (game), 28016/TCP (RCON), 8000/TCP (maps), 8888/TCP (WebRustPlus)
 
 ## Configuration
 
 ### Server Settings (rust-environment.sh)
 Key variables:
-- `maxplayers`: Player limit (default: 10)
+- `maxplayers`: Player limit (default: 50)
 - `servername`: Server display name
-- `worldsize`: Map size 1000-6000 (default: 3000)
+- `worldsize`: Map size 1000-6000 (default: 3500)
 - `seed`: Map generation seed
+- `GAMEMODE`: vanilla/hardcore/softcore (affects map visibility, Rust+, sleeping bags, tech tree costs)
 - `ENABLE_RUST_EAC`: Easy Anti-Cheat toggle (disable for Linux clients)
 - `uptime_monitoring`: Auto-restart on crash (default: enabled)
 - `custom_map_url`: URL for custom map download
 - `rconpassword`: Custom RCON password (auto-generated if empty)
+
+### Environment Variable Overrides (.env file)
+- `SERVERNAME`: Override server name
+- `WORLDSIZE`: Override map size
+- `SEED`: Force specific map seed
 
 ### Resource Limits (docker-compose.yml)
 ```yaml
@@ -174,7 +183,13 @@ mem_limit: 12gb     # Memory limit
 - Game traffic: 28015/UDP
 - RCON: 28016/TCP (localhost only by default)
 - Custom maps HTTP: 8000/TCP
-- Health check: Port 28015 every 60s
+- WebRustPlus: 8888/TCP
+- Health check: Port 28015 every 10s (15-min start period)
+
+### Scheduled Tasks (Cron)
+- Daily server restart: 6:00 AM
+- Weekly validation: Sunday 4:00 AM
+- Monthly map wipe: First Thursday 9:00 PM (with validation)
 
 ## Development Workflow
 
@@ -236,6 +251,7 @@ Multiple methods available:
    ```bash
    ./admin/apply-permissions.sh      # Apply permissions from files
    ./admin/apply-permissions-fast.sh # Quick permission application
+   # Configure delays via DELAY_OVERRIDE and VERIFY_DELAY_OVERRIDE env vars
    ```
 
 ## Important Implementation Details
@@ -255,6 +271,12 @@ Multiple methods available:
 6. Auto-validates after 3 crashes in 24 hours
 7. Checks for VALIDATION_NEEDED marker on restart
 
+### Validation Triggers
+- Manual: `./admin/validate-server.sh`
+- Automatic: After 3 crashes within 24 hours
+- Scheduled: Sunday 4:00 AM (weekly)
+- Monthly: First Thursday 9:00 PM (with map wipe)
+
 ### Security Considerations
 - Container runs as non-root user (linuxgsm)
 - RCON bound to localhost by default
@@ -273,3 +295,12 @@ The server supports exporting and importing production environments:
 - **Import**: Applies exported settings to a new or existing server
 - Admin plugins (Godmode, Vanish) are excluded from exports for security
 - Useful for migrating settings between development and production servers
+
+### Current Custom Mods
+- BetterTC - Enhanced Tool Cupboard management
+- Bradley - Bradley APC modifications
+- ChaosNPCDownloader - NPC management system
+- RaidProtection - Raid protection mechanics
+- SingularityStorage - Advanced storage solutions
+- WebRustPlusWorking - Rust+ web interface
+- ZombieHorde - Zombie spawning system
