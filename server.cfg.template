@@ -1,0 +1,69 @@
+# BusyDaddyRust Server Configuration
+# This file configures how the server appears in the Rust server browser
+
+#########################################
+# Server Browser Information
+#########################################
+
+# Server name displayed in the server browser
+server.hostname "{{HOSTNAME}}"
+
+{{LISTING_CONTROL}}
+
+# Server description - appears when clicking on the server
+server.description "Mostly vanilla Hardcore survival for busy people (dads and moms too :)).\nIts PvP, but more shift towards PvE with zombies and bradlies,\nsmoother starts with PvE-only first hour, fair extra raid protection with scrab,\nXP-based RPG character stats, fair cross-wipe stash system, Rust+ hardcore analog"
+
+# Server website URL - shows "View Webpage" button
+server.url "https://busydaddyrust.com"
+
+# Server header image (512x256 pixels) - background image in connection window
+# TODO: Upload a 512x256 header image to your website and update this URL
+#server.headerimage "https://busydaddyrust.com/serverheader.jpg"
+
+#########################################
+# Server Tags
+#########################################
+
+# Server tags help players find your server
+# Note: Some tags are automatically set (e.g., "hardcore" from GAMEMODE setting)
+# You can add up to 3 custom tags from different groups
+server.tags "monthly,pve,rpg"
+
+#########################################
+# Additional Server Settings
+#########################################
+
+# Save interval in seconds (300 = 5 minutes)
+server.saveinterval 300
+
+# Enable server query for external monitoring
+server.queryport 28017
+
+# Anti-cheat settings
+server.secure 1
+
+# Enable VAC (Valve Anti-Cheat)
+server.anticheatvac 1
+
+# Combat log size
+server.combatlogsize 30
+
+# Global chat enabled (set to 0 for local chat only)
+# Note: Hardcore mode limits chat to 100m radius
+server.globalchat 1
+
+# Server tickrate
+server.tickrate 30
+
+# Enable Rust+ companion app (disabled in hardcore mode by default)
+# app.port 28082
+
+#########################################
+# Resource and Gameplay Settings
+#########################################
+
+# These are handled by rust-environment.sh:
+# - maxplayers
+# - worldsize
+# - seed
+# - servername (can be overridden here with server.hostname)

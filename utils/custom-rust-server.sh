@@ -9,6 +9,7 @@ set -ex
 # Export Docker environment variables for child processes
 export SERVERNAME="${SERVERNAME}"
 export WORLDSIZE="${WORLDSIZE}"
+export PRODUCTION="${PRODUCTION:-false}"
 
 [ -f ./linuxgsm.sh ] || (
   if [ -n "${LINUX_GSM_VERSION:-}" ]; then
@@ -38,6 +39,33 @@ lgsm_cfg=lgsm/config-lgsm/rustserver/rustserver.cfg
 sed -i '/apply-settings.sh/d' "$lgsm_cfg" 2>/dev/null || true
 echo 'if [ ! "$1" = docker ]; then SERVERNAME="'"${SERVERNAME}"'" WORLDSIZE="'"${WORLDSIZE}"'" /utils/apply-settings.sh; source lgsm/config-lgsm/rustserver/rustserver.cfg docker; fi' >> "$lgsm_cfg"
 /utils/get-or-update-plugins.sh
+
+# Generate server.cfg based on production/dev mode
+if [ -f /server.cfg.template ]; then
+  mkdir -p serverfiles/server/rustserver/cfg
+  
+  if [ "${PRODUCTION}" = "true" ]; then
+    echo "Configuring server for PRODUCTION mode (public listing)"
+    HOSTNAME="BusyDaddyRust"
+    LISTING_CONTROL=""
+  else
+    echo "Configuring server for DEVELOPMENT mode (hidden from public)"
+    HOSTNAME="BusyDaddyRust-dev"
+    LISTING_CONTROL="# DEVELOPMENT SERVER - Hidden from public lists\nserver.official false\nserver.stability false"
+  fi
+  
+  # Generate server.cfg from template
+  sed -e "s/{{HOSTNAME}}/${HOSTNAME}/g" \
+      -e "s|{{LISTING_CONTROL}}|${LISTING_CONTROL}|g" \
+      /server.cfg.template > serverfiles/server/rustserver/cfg/server.cfg
+  
+  echo "server.cfg generated for ${PRODUCTION} mode"
+elif [ -f /server.cfg ]; then
+  # Fallback to direct copy if no template
+  mkdir -p serverfiles/server/rustserver/cfg
+  cp /server.cfg serverfiles/server/rustserver/cfg/server.cfg
+  echo "Custom server.cfg copied to game directory"
+fi
 
 # Check if validation is needed (marker from crash detection)
 if [ -f /home/linuxgsm/VALIDATION_NEEDED ]; then

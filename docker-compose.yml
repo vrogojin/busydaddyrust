@@ -19,6 +19,7 @@ services:
       - SERVERNAME=${SERVERNAME}
       - WORLDSIZE=${WORLDSIZE}
       - SEED=${SEED}
+      - PRODUCTION=${PRODUCTION}
     command:
       - /bin/bash
       - -exc
@@ -68,7 +69,7 @@ services:
           chown -R linuxgsm: /home/linuxgsm/serverfiles/oxide/data
         fi
         rm -f ~linuxgsm/linuxgsm.sh
-        su - linuxgsm -c "LINUX_GSM_VERSION=\"${LINUX_GSM_VERSION:-v20.4.1}\" SERVERNAME=\"${SERVERNAME}\" WORLDSIZE=\"${WORLDSIZE}\" SEED=\"${SEED}\" /utils/custom-rust-server.sh"
+        su - linuxgsm -c "LINUX_GSM_VERSION=\"${LINUX_GSM_VERSION:-v20.4.1}\" SERVERNAME=\"${SERVERNAME}\" WORLDSIZE=\"${WORLDSIZE}\" SEED=\"${SEED}\" PRODUCTION=\"${PRODUCTION}\" /utils/custom-rust-server.sh"
     volumes:
       - lgsm:/home/linuxgsm
       - ./mod-configs/:/home/linuxgsm/serverfiles/oxide/config/:rw
@@ -78,6 +79,7 @@ services:
       - ./harmony-config:/home/linuxgsm/serverfiles/HarmonyConfig
       - ./utils/:/utils/:ro
       - ./rust-environment.sh:/rust-environment.sh:ro
+      - ./server.cfg.template:/server.cfg.template:ro
     ports:
       - ${RUST_RCON_INTERFACE:-127.0.0.1}:28016:28016
       - 0.0.0.0:28015:28015/udp
