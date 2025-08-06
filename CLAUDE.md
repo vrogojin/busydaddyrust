@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Dockerized Rust Dedicated Server using LinuxGSM for game server management. Provides complete solution for hosting Rust game servers with Oxide/uMod plugin support, custom maps, automated monitoring, and administrative tools.
+Dockerized Rust Dedicated Server using LinuxGSM for game server management. Single-container architecture with Oxide/uMod plugin support, automated crash recovery, and comprehensive administrative tooling.
 
 ## Essential Commands
 
@@ -54,7 +54,6 @@ docker compose logs -f
 ./admin/rcon.sh
 
 # Connect via web: http://localhost:28016
-# See admin/RCON_USAGE.md for detailed documentation
 ```
 
 ### Backup Operations
@@ -67,18 +66,6 @@ docker compose logs -f
 
 # Restore backup
 ./admin/backup/restore-backup.sh ./backups/[backup-file].tgz
-
-# Clean old backups (keep last 10)
-./admin/backup/clean.sh
-```
-
-### Map Management
-```bash
-# Regenerate world map
-./admin/regenerate-map.sh
-
-# Custom maps: Place .map files in custom-maps/
-# Access custom map server: http://localhost:8000
 ```
 
 ### Server Validation & Health
@@ -89,7 +76,7 @@ docker compose logs -f
 # Check validation status and crash history
 ./admin/validation-status.sh
 
-# Export production environment (plugins, permissions, configs)
+# Export production environment
 ./admin/export_prod_env.sh
 
 # Import production environment
@@ -98,209 +85,176 @@ docker compose logs -f
 
 ## Architecture Overview
 
-### Container Architecture
-- Single Docker container running LinuxGSM + Rust Server + Oxide
-- Base image: `gameservermanagers/linuxgsm-docker`
-- All server management through LinuxGSM commands inside container
-- Runs as non-root user (linuxgsm, UID/GID 1000) after setup
-
-### Key Scripts Flow
-1. **docker-compose.yml**: Initializes container with complex startup sequence:
-   - Installs dependencies (dos2unix, rsync, sudo, python3.8-venv, etc.)
-   - Sets up Python virtual environment for RCON tools
-   - Configures permissions and drops sudo after setup
-   
-2. **utils/custom-rust-server.sh**: Main server startup script that:
+### Container Initialization Flow
+1. Docker Compose starts with root for setup (installs packages, creates Python venv)
+2. Configures linuxgsm user (UID/GID 1000), grants temporary sudo
+3. Runs `utils/custom-rust-server.sh` which:
    - Installs/updates LinuxGSM and Rust server
    - Manages Oxide/uMod installation
-   - Downloads RustEdit extension
-   - Applies settings from rust-environment.sh
    - Checks for VALIDATION_NEEDED marker
-   - Starts monitoring and launches server
+   - Starts enhanced monitoring
+4. Drops sudo privileges after initialization
+5. Launches server with crash tracking
 
-3. **utils/get-or-update-plugins.sh**: Sophisticated plugin manager:
-   - SHA256 verification to avoid unnecessary downloads
-   - Rate limiting handling with exponential backoff
-   - Extracts C# class names from plugin files
-   - Syncs custom plugins and removes outdated ones
+### Key Scripts and Their Interactions
 
-4. **utils/monitor-rust-server-enhanced.sh**: Advanced health monitoring with crash tracking:
-   - Tracks crashes and triggers validation after 3 crashes in 24 hours
-   - Logs crashes to `/home/linuxgsm/log/crash-tracker.log`
-   - Creates validation marker file when threshold reached
+**utils/custom-rust-server.sh** → Main orchestrator
+- Downloads LinuxGSM → Installs Rust via Steam → Sets up Oxide
+- Sources rust-environment.sh for configuration
+- Checks validation markers before starting
+- Launches monitor-rust-server-enhanced.sh
 
-### Directory Structure
-```
-├── admin/                # Administrative scripts
-│   ├── backup/          # Backup management tools
-│   ├── logs/            # Log management tools
-│   └── *.sh             # Various admin scripts
-├── custom-mods/         # Custom Oxide plugins (.cs files)
-├── custom-maps/         # Custom map files (.map)
-├── harmony-mods/        # Harmony framework mods
-├── harmony-config/      # Harmony mod configurations
-├── mod-configs/         # Plugin configurations
-│   ├── plugins.txt      # List of uMod plugins to download
-│   └── *.json           # Individual plugin configs
-├── utils/               # Core scripts (read-only in container)
-├── docker-compose.yml   # Container orchestration
-├── rust-environment.sh  # Main server configuration
-└── .env                 # Environment variable overrides
-```
+**utils/monitor-rust-server-enhanced.sh** → Health monitoring
+- Tracks crashes to `/home/linuxgsm/log/crash-tracker.log`
+- Auto-validates after 3 crashes in 24 hours
+- Creates VALIDATION_NEEDED marker when threshold reached
+- Implements graceful shutdown with fallback to SIGKILL
 
-### Volume Mapping Strategy
-- **Named volume `lgsm`**: Persistent server data (/home/linuxgsm)
+**utils/get-or-update-plugins.sh** → Plugin management
+- SHA256 verification to detect changes
+- Rate limiting with exponential backoff (1s→64s)
+- Extracts C# class names from plugin source
+- Syncs custom-mods/ overriding uMod versions
+- Removes outdated plugins automatically
+
+### Volume and Port Strategy
+- **Named volume `lgsm`**: Persistent server data
 - **Bind mounts**: Configuration and custom content
-- **Read-only mounts**: utils/ directory to prevent modifications
-- **Port mappings**: 28015/UDP (game), 28016/TCP (RCON), 8000/TCP (maps), 8888/TCP (WebRustPlus)
+- **Read-only**: utils/ directory (security)
+- **Ports**: 
+  - 28015/UDP: Game traffic
+  - 28016/TCP: RCON
+  - 8000/TCP: Map downloads
+  - 8888/TCP: WebRustPlus interface
 
-## Configuration
-
-### Server Settings (rust-environment.sh)
-Key variables:
-- `maxplayers`: Player limit (default: 50)
-- `servername`: Server display name
-- `worldsize`: Map size 1000-6000 (default: 3500)
-- `seed`: Map generation seed
-- `GAMEMODE`: vanilla/hardcore/softcore (affects map visibility, Rust+, sleeping bags, tech tree costs)
-- `ENABLE_RUST_EAC`: Easy Anti-Cheat toggle (disable for Linux clients)
-- `uptime_monitoring`: Auto-restart on crash (default: enabled)
-- `custom_map_url`: URL for custom map download
-- `rconpassword`: Custom RCON password (auto-generated if empty)
-
-### Environment Variable Overrides (.env file)
-- `SERVERNAME`: Override server name
-- `WORLDSIZE`: Override map size
-- `SEED`: Force specific map seed
-
-### Resource Limits (docker-compose.yml)
-```yaml
-cpu_count: 2        # CPU cores
-mem_limit: 12gb     # Memory limit
-```
-
-### Network Configuration
-- Game traffic: 28015/UDP
-- RCON: 28016/TCP (localhost only by default)
-- Custom maps HTTP: 8000/TCP
-- WebRustPlus: 8888/TCP
-- Health check: Port 28015 every 10s (15-min start period)
-
-### Scheduled Tasks (Cron)
-- Daily server restart: 6:00 AM
-- Weekly validation: Sunday 4:00 AM
-- Monthly map wipe: First Thursday 9:00 PM (with validation)
+### Configuration Hierarchy
+1. `.env` file → Override key variables
+2. `docker-compose.yml` → Container settings
+3. `rust-environment.sh` → Primary server config
+4. LinuxGSM configs → Generated in container
 
 ## Development Workflow
 
-### Adding/Updating Plugins
-1. **uMod plugins**: Add names to `mod-configs/plugins.txt`
-2. Run update script: `./admin/get-or-update-oxide-plugins.sh`
-3. Configure: Edit JSON files in `mod-configs/`
-4. **Custom plugins**: Place .cs files in `custom-mods/`
-5. Apply without restart: `./admin/reload-plugins.sh`
-
-### Console Command Execution
-Multiple methods available:
-1. **RCON** - Returns output, works remotely
-   ```bash
-   ./admin/rcon-command.sh "oxide.version"
-   ```
-2. **Direct console** - Full access via tmux, no output capture
-   ```bash
-   ./admin/console-command.sh "oxide.reload *"
-   ```
-3. **Console with output** - Captures responses (timing-dependent)
-   ```bash
-   ./admin/console-command-with-output.sh "plugins"
-   ```
-4. **Interactive RCON** - Direct RCON shell access
-   ```bash
-   ./admin/rcon.sh
-   # Or specific command: ./admin/rcon.sh "oxide.plugins"
-   ```
-5. **Docker RCON** - Alternative RCON methods
-   ```bash
-   ./admin/docker-rcon-command.sh "command"
-   ./admin/docker-rcon-reload.sh  # Reload all plugins
-   ```
+### Adding Plugins
+1. **uMod plugins**: Add to `mod-configs/plugins.txt`
+2. Run: `./admin/get-or-update-oxide-plugins.sh`
+3. **Custom plugins**: Place in `custom-mods/` (overrides uMod)
+4. Configure: Edit JSONs in `mod-configs/`
+5. Apply: `./admin/reload-plugins.sh`
 
 ### Debugging Issues
-1. **Check logs**: 
-   ```bash
-   docker compose logs -f
-   ./admin/shell.sh
-   tail -f /home/linuxgsm/log/script/rustserver-script.log
-   tail -f /home/linuxgsm/log/autoheal.log      # Monitor crashes
-   tail -f /home/linuxgsm/log/crash-tracker.log # Crash timestamps
-   ```
-2. **LinuxGSM commands** (inside container):
-   ```bash
-   ./rustserver details
-   ./rustserver monitor
-   ./rustserver console
-   ./rustserver validate  # Validate game files
-   ```
-3. **Plugin issues**: 
-   ```bash
-   ./admin/bugfix-oxide-plugins.sh  # Fix Linux compatibility
-   ./admin/reload-plugins.sh         # Reload all plugins
-   ./admin/get-or-update-oxide-plugins.sh  # Update/sync plugins
-   ```
-4. **Permission management**:
-   ```bash
-   ./admin/apply-permissions.sh      # Apply permissions from files
-   ./admin/apply-permissions-fast.sh # Quick permission application
-   # Configure delays via DELAY_OVERRIDE and VERIFY_DELAY_OVERRIDE env vars
-   ```
+```bash
+# Check logs
+docker compose logs -f
+tail -f /home/linuxgsm/log/script/rustserver-script.log
+tail -f /home/linuxgsm/log/crash-tracker.log
+
+# Inside container
+./rustserver details
+./rustserver monitor
+./rustserver validate
+
+# Fix plugin issues
+./admin/bugfix-oxide-plugins.sh
+```
+
+### Console Command Execution
+```bash
+# RCON (returns output, works remotely)
+./admin/rcon-command.sh "oxide.version"
+
+# Direct console (full access, no output)
+./admin/console-command.sh "oxide.reload *"
+
+# Interactive RCON
+./admin/rcon.sh
+```
 
 ## Important Implementation Details
 
-### Plugin Management Internals
-- Plugin names extracted from C# class definitions, not filenames
-- SHA256 hashes stored in `/tmp/plugin_hashes/` to detect changes
-- Rate limiting: Exponential backoff from 1s to 64s on 429 errors
+### Plugin System
+- Plugins identified by C# class name, not filename
+- SHA256 hashes in `/tmp/plugin_hashes/` detect changes
 - Custom plugins in `custom-mods/` override uMod versions
+- Rate limiting handles 429 errors with backoff
 
-### Startup Sequence
-1. Container starts with temporary sudo for setup
-2. Installs dependencies and creates Python venv for RCON tools
-3. Drops sudo privileges after setup
-4. Runs custom-rust-server.sh to initialize server
-5. Monitors server health with enhanced crash tracking
-6. Auto-validates after 3 crashes in 24 hours
-7. Checks for VALIDATION_NEEDED marker on restart
+### Crash Recovery System
+- Monitor checks process every 10 seconds
+- Logs crashes with timestamps
+- Counts crashes within 24-hour window
+- Creates VALIDATION_NEEDED marker after 3 crashes
+- Next restart triggers automatic validation
 
 ### Validation Triggers
 - Manual: `./admin/validate-server.sh`
-- Automatic: After 3 crashes within 24 hours
-- Scheduled: Sunday 4:00 AM (weekly)
-- Monthly: First Thursday 9:00 PM (with map wipe)
+- Automatic: After 3 crashes in 24 hours
+- Scheduled: Weekly (Sunday 4 AM) via cron
+- Monthly: First Thursday with map wipe
 
-### Security Considerations
-- Container runs as non-root user (linuxgsm)
+### Security Model
+- Container runs as non-root (linuxgsm user)
 - RCON bound to localhost by default
-- Utils mounted read-only to prevent tampering
-- Temporary sudo removed after initialization
+- Utils mounted read-only
+- Temporary sudo removed after setup
+- Admin plugins excluded from production exports
 
-### LinuxGSM Integration
-- Server configs in: `/home/linuxgsm/lgsm/config-lgsm/rustserver/`
-- Game files in: `/home/linuxgsm/serverfiles/`
-- Logs in: `/home/linuxgsm/log/`
-- All server control through LinuxGSM commands
+### LinuxGSM Integration Points
+- Server configs: `/home/linuxgsm/lgsm/config-lgsm/rustserver/`
+- Game files: `/home/linuxgsm/serverfiles/`
+- Logs: `/home/linuxgsm/log/`
+- All control through LinuxGSM commands (./rustserver)
 
-### Environment Export/Import
-The server supports exporting and importing production environments:
-- **Export**: Captures non-admin plugins, permissions, and configurations
-- **Import**: Applies exported settings to a new or existing server
-- Admin plugins (Godmode, Vanish) are excluded from exports for security
-- Useful for migrating settings between development and production servers
+### RCON Implementation Details
+- Internal tool: `rcon-command` installed via Dockerfile
+- WebSocket-based client implementation
+- Password auto-discovery from process arguments
+- Alias shortcuts: `reload` → `oxide.reload *`
 
-### Current Custom Mods
-- BetterTC - Enhanced Tool Cupboard management
-- Bradley - Bradley APC modifications
-- ChaosNPCDownloader - NPC management system
-- RaidProtection - Raid protection mechanics
-- SingularityStorage - Advanced storage solutions
-- WebRustPlusWorking - Rust+ web interface
-- ZombieHorde - Zombie spawning system
+### Backup System Architecture
+- Includes: lgsm/, serverfiles/server/, serverfiles/oxide/
+- Format: Timestamped .tgz with date format
+- Error handling with trap cleanup
+
+### Production Export/Import
+- Filters admin plugins (Godmode, Vanish)
+- Exports default group permissions via RCON
+- Validates plugin configs before export
+- Package structure: plugins, configs, permissions
+
+## Configuration Reference
+
+### rust-environment.sh Key Variables
+- `maxplayers`: Player limit (default: 50)
+- `worldsize`: Map size 1000-6000 (default: 3500)
+- `seed`: Map generation seed
+- `GAMEMODE`: vanilla/hardcore/softcore (hardcore enabled)
+- `ENABLE_RUST_EAC`: EAC toggle (disable for Linux clients)
+- `uptime_monitoring`: Auto-restart on crash
+- `custom_map_url`: Custom map download URL
+- `rconpassword`: Auto-generated if empty
+
+### Docker Resource Configuration
+```yaml
+cpu_count: 2
+mem_limit: 12gb
+```
+
+### Environment Variables (.env)
+- `SERVERNAME`: Override server name
+- `WORLDSIZE`: Override map size
+- Variables propagate through Docker stages
+
+### Scheduled Tasks (via cron)
+- Daily restart: 6:00 AM
+- Weekly validation: Sunday 4:00 AM
+- Monthly wipe: First Thursday 9:00 PM
+
+## Directory Structure
+- `admin/` - Host-side management scripts
+- `utils/` - Container-side scripts (read-only mount)
+- `custom-mods/` - Custom C# plugins (override uMod)
+- `mod-configs/` - Plugin configurations and manifest
+- `custom-maps/` - Self-hosted map files
+- `harmony-mods/` - Additional mods for custom maps
+- `backups/` - Server backup storage
+- `admin/logs/` - Validation and tracking logs
