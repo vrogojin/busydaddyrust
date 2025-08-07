@@ -34,6 +34,9 @@ if [ ! -f 'serverfiles/RustDedicated_Data/Managed/Oxide.Ext.RustEdit.dll' ]; the
     https://github.com/k1lly0u/Oxide.Ext.RustEdit/raw/master/Oxide.Ext.RustEdit.dll
 fi
 
+# Setup cron jobs for scheduled tasks
+sudo /utils/setup-cron.sh
+
 # remove passwordless sudo access since setup is complete
 sudo rm -f /etc/sudoers.d/lgsm
 

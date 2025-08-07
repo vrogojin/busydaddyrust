@@ -4,7 +4,7 @@ FROM gameservermanagers/linuxgsm-docker
 # Switch to root user for installations
 USER root
 
-# Install additional packages for RCON support and graphics fallback
+# Install additional packages for RCON support, graphics fallback, and cron
 RUN apt-get update && \
     apt-get install -y \
     python3-pip \
@@ -15,6 +15,7 @@ RUN apt-get update && \
     xvfb \
     mesa-utils \
     libgl1-mesa-dri \
+    cron \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python packages for WebSocket RCON
