@@ -26,7 +26,7 @@ services:
       - |
         # MAIN
         apt-get update
-        apt-get install -y dos2unix rsync sudo vim nano libgdiplus python3.8-venv lib32z1
+        apt-get install -y dos2unix rsync sudo vim nano libgdiplus python3.8-venv lib32z1 imagemagick
         #grant access to video card for direct rendering (not used by rust ds)
         #function get_video_gid() {
         #  find /dev/dri -maxdepth 1 -type c | head -n1 | xargs stat -c %g
@@ -80,6 +80,7 @@ services:
       - ./utils/:/utils/:ro
       - ./rust-environment.sh:/rust-environment.sh:ro
       - ./server.cfg.template:/server.cfg.template:ro
+      - ./busydaddyrust-logo.png:/busydaddyrust-logo.png:ro
     ports:
       - ${RUST_RCON_INTERFACE:-127.0.0.1}:28016:28016
       - 0.0.0.0:28015:28015/udp

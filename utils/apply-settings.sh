@@ -163,19 +163,22 @@ fi
   grep "$(<rcon_pass)" "$lgsm_cfg" || echo rconpassword="$(<rcon_pass)" >> "$lgsm_cfg"
 ) &> /dev/null
 
-# Ensure game mode is set in server.cfg
+# Ensure game mode is set in server.cfg (only if not already present)
 SERVER_CFG="/home/linuxgsm/serverfiles/server/rustserver/cfg/server.cfg"
 if [ -f "$SERVER_CFG" ]; then
-  # Remove any existing gamemode lines
-  sed -i '/^server\.gamemode/d' "$SERVER_CFG" 2>/dev/null || true
-  
-  # Apply gamemode if set
-  if [ -n "${GAMEMODE:-}" ]; then
-    echo "Applying game mode: $GAMEMODE to server.cfg..."
-    echo "server.gamemode $GAMEMODE" >> "$SERVER_CFG"
-    echo "Game mode applied successfully"
+  # Check if gamemode is already set in server.cfg
+  if grep -q '^server\.gamemode' "$SERVER_CFG" 2>/dev/null; then
+    echo "Game mode already configured in server.cfg - preserving existing setting"
+    grep '^server\.gamemode' "$SERVER_CFG" || true
   else
-    echo "No game mode specified, using default (vanilla)"
+    # Apply gamemode if set and not already present
+    if [ -n "${GAMEMODE:-}" ]; then
+      echo "Applying game mode: $GAMEMODE to server.cfg..."
+      echo "server.gamemode $GAMEMODE" >> "$SERVER_CFG"
+      echo "Game mode applied successfully"
+    else
+      echo "No game mode specified, using default (vanilla)"
+    fi
   fi
 else
   echo "Warning: server.cfg not found at $SERVER_CFG - game mode will be set on first server start"

@@ -21,13 +21,12 @@ RUN python3 -m pip install --upgrade pip && \
 # Create RCON utilities directory
 RUN mkdir -p /usr/local/bin/rcon-utils
 
-# Add RCON command script
-COPY admin/docker-rcon-command.sh /usr/local/bin/rcon-command
-RUN chmod +x /usr/local/bin/rcon-command
+# RCON commands disabled - using external scripts instead
+# COPY admin/docker-rcon-command.sh /usr/local/bin/rcon-command
+# RUN chmod +x /usr/local/bin/rcon-command
 
-# Add reload plugins helper
-COPY admin/docker-rcon-reload.sh /usr/local/bin/rcon-reload-plugins
-RUN chmod +x /usr/local/bin/rcon-reload-plugins
+# COPY admin/docker-rcon-reload.sh /usr/local/bin/rcon-reload-plugins
+# RUN chmod +x /usr/local/bin/rcon-reload-plugins
 
 # Add environment variable to indicate custom image
 ENV RUST_CUSTOM_IMAGE=1

@@ -35,12 +35,8 @@ fi
 sudo rm -f /etc/sudoers.d/lgsm
 
 lgsm_cfg=lgsm/config-lgsm/rustserver/rustserver.cfg
-# Remove old apply-settings line and add new one with environment variables
-sed -i '/apply-settings.sh/d' "$lgsm_cfg" 2>/dev/null || true
-echo 'if [ ! "$1" = docker ]; then SERVERNAME="'"${SERVERNAME}"'" WORLDSIZE="'"${WORLDSIZE}"'" /utils/apply-settings.sh; source lgsm/config-lgsm/rustserver/rustserver.cfg docker; fi' >> "$lgsm_cfg"
-/utils/get-or-update-plugins.sh
 
-# Generate server.cfg based on production/dev mode
+# Generate server.cfg based on production/dev mode FIRST (before apply-settings)
 if [ -f /server.cfg.template ]; then
   mkdir -p serverfiles/server/rustserver/cfg
   
@@ -54,9 +50,16 @@ if [ -f /server.cfg.template ]; then
     LISTING_CONTROL="# DEVELOPMENT SERVER - Hidden from public lists\nserver.official false\nserver.stability false"
   fi
   
+  # Get server IP for logo URL
+  SERVER_IP=$(hostname -I | awk '{print $1}')
+  if [ -z "$SERVER_IP" ]; then
+    SERVER_IP="busydaddyrust.com"
+  fi
+  
   # Generate server.cfg from template
   sed -e "s/{{HOSTNAME}}/${HOSTNAME}/g" \
       -e "s|{{LISTING_CONTROL}}|${LISTING_CONTROL}|g" \
+      -e "s/{{SERVER_IP}}/${SERVER_IP}/g" \
       /server.cfg.template > serverfiles/server/rustserver/cfg/server.cfg
   
   echo "server.cfg generated for ${PRODUCTION} mode"
@@ -66,6 +69,15 @@ elif [ -f /server.cfg ]; then
   cp /server.cfg serverfiles/server/rustserver/cfg/server.cfg
   echo "Custom server.cfg copied to game directory"
 fi
+
+# Remove old apply-settings line and add new one with environment variables
+sed -i '/apply-settings.sh/d' "$lgsm_cfg" 2>/dev/null || true
+echo 'if [ ! "$1" = docker ]; then SERVERNAME="'"${SERVERNAME}"'" WORLDSIZE="'"${WORLDSIZE}"'" /utils/apply-settings.sh; source lgsm/config-lgsm/rustserver/rustserver.cfg docker; fi' >> "$lgsm_cfg"
+
+/utils/get-or-update-plugins.sh
+
+# Copy logo for WebRustPlus to serve
+/utils/copy-logo.sh
 
 # Check if validation is needed (marker from crash detection)
 if [ -f /home/linuxgsm/VALIDATION_NEEDED ]; then
