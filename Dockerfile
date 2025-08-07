@@ -4,7 +4,7 @@ FROM gameservermanagers/linuxgsm-docker
 # Switch to root user for installations
 USER root
 
-# Install additional packages for RCON support
+# Install additional packages for RCON support and graphics fallback
 RUN apt-get update && \
     apt-get install -y \
     python3-pip \
@@ -12,6 +12,9 @@ RUN apt-get update && \
     netcat \
     curl \
     jq \
+    xvfb \
+    mesa-utils \
+    libgl1-mesa-dri \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python packages for WebSocket RCON
@@ -21,9 +24,9 @@ RUN python3 -m pip install --upgrade pip && \
 # Create RCON utilities directory
 RUN mkdir -p /usr/local/bin/rcon-utils
 
-# RCON commands disabled - using external scripts instead
-# COPY admin/docker-rcon-command.sh /usr/local/bin/rcon-command
-# RUN chmod +x /usr/local/bin/rcon-command
+# Install RCON command utility
+COPY admin/docker-rcon-command.sh.disable /usr/local/bin/rcon-command
+RUN chmod +x /usr/local/bin/rcon-command
 
 # COPY admin/docker-rcon-reload.sh /usr/local/bin/rcon-reload-plugins
 # RUN chmod +x /usr/local/bin/rcon-reload-plugins

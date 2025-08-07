@@ -6,6 +6,9 @@
 
 set -ex
 
+# Detect if we need graphics workarounds
+source /utils/detect-graphics-mode.sh
+
 # Export Docker environment variables for child processes
 export SERVERNAME="${SERVERNAME}"
 export WORLDSIZE="${WORLDSIZE}"
@@ -79,11 +82,18 @@ echo 'if [ ! "$1" = docker ]; then SERVERNAME="'"${SERVERNAME}"'" WORLDSIZE="'"$
 # Copy logo for WebRustPlus to serve
 /utils/copy-logo.sh
 
-# Check if validation is needed (marker from crash detection)
+# Check if validation is needed (marker from crash detection or manual request)
 if [ -f /home/linuxgsm/VALIDATION_NEEDED ]; then
   echo "Validation marker found - running game file validation before start"
   ./rustserver validate
+  
+  # Reinstall Oxide after validation (validation removes it)
+  echo "Reinstalling Oxide after validation..."
+  ./rustserver mods-update
+  
   rm -f /home/linuxgsm/VALIDATION_NEEDED
+else
+  echo "Skipping validation - no issues detected"
 fi
 
 # Use enhanced monitor with crash tracking
@@ -91,6 +101,10 @@ fi
 
 # start rust server
 ./rustserver start
+
+# Start the startup watchdog to detect hangs
+/utils/startup-watchdog.sh &
+WATCHDOG_PID=$!
 echo Sleeping for 30 seconds...
 sleep 30
 tail -f log/console/rustserver-console.log \

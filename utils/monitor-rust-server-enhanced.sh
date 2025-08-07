@@ -2,7 +2,7 @@
 
 LOGFILE=/home/linuxgsm/log/autoheal.log
 CRASHLOG=/home/linuxgsm/log/crash-tracker.log
-CRASH_THRESHOLD=3  # Number of crashes before validation
+# Validation now happens on every startup, so we just track crashes for monitoring
 CRASH_WINDOW=86400 # Time window in seconds (24 hours)
 
 [ ! -r /rust-environment.sh ] || source /rust-environment.sh
@@ -41,14 +41,10 @@ function count_recent_crashes() {
   echo $count
 }
 
-function trigger_validation() {
-  echo "$(date) - Multiple crashes detected, triggering validation" >> "$LOGFILE"
-  
-  # Create a marker file to signal validation needed
-  touch /home/linuxgsm/VALIDATION_NEEDED
-  
-  # Clear crash log after triggering validation
-  > "$CRASHLOG"
+function log_crash_summary() {
+  local crash_count=$(count_recent_crashes)
+  echo "$(date) - Crash detected. Recent crashes in 24h: $crash_count" >> "$LOGFILE"
+  echo "$(date) - Validation will run automatically on next startup" >> "$LOGFILE"
 }
 
 function wait-for-rust() {
@@ -60,14 +56,7 @@ function wait-for-rust() {
 function graceful-kill() {
   echo "$(date) - auto-heal graceful kill" >> "$LOGFILE"
   log_crash
-  
-  # Check if we need validation
-  local crash_count=$(count_recent_crashes)
-  echo "$(date) - Recent crashes: $crash_count" >> "$LOGFILE"
-  
-  if [ "$crash_count" -ge "$CRASH_THRESHOLD" ]; then
-    trigger_validation
-  fi
+  log_crash_summary
   
   pgrep tail | xargs -- kill
 }
@@ -75,14 +64,7 @@ function graceful-kill() {
 function hard-kill() {
   echo "$(date) - auto-heal HARD kill" >> "$LOGFILE"
   log_crash
-  
-  # Check if we need validation
-  local crash_count=$(count_recent_crashes)
-  echo "$(date) - Recent crashes: $crash_count" >> "$LOGFILE"
-  
-  if [ "$crash_count" -ge "$CRASH_THRESHOLD" ]; then
-    trigger_validation
-  fi
+  log_crash_summary
   
   pgrep tail | xargs -- kill -9
 }

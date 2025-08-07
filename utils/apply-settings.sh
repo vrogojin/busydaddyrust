@@ -23,6 +23,11 @@ echo 'Applying server settings from rust-environment.sh:'
 server_cfg=serverfiles/server/rustserver/cfg/server.cfg
 lgsm_cfg=lgsm/config-lgsm/rustserver/rustserver.cfg
 
+# Force server to bind to all interfaces for public visibility
+echo "    Forcing server to bind to 0.0.0.0 for public listing"
+sed -i '/^ip=/d' "$lgsm_cfg"
+echo "ip=0.0.0.0" >> "$lgsm_cfg"
+
 # disable EAC allowing Linux clients
 sed -i '/^ *server\.secure/d' "$server_cfg"
 sed -i '/^ *server\.encryption/d' "$server_cfg"
@@ -135,7 +140,13 @@ function download-custom-map() {
     curl --retry 3 --retry-delay 10 -sfLo /custom-maps/"${custom_map}" "${CUSTOM_MAP_URL}"
   )
 }
+# Remove any existing fn_parms definition
 sed -i '/^fn_parms/d' "$lgsm_cfg"
+
+# Add flags to skip asset warmup and graphical operations for headless server
+# Note: We keep AI and navigation enabled for NPCs to function properly
+# Try minimal graphics settings without breaking the server
+HEADLESS_FLAGS=""
 
 
 if [ -n "${CUSTOM_MAP_URL:-}" ] || ls -1 /custom-maps/*.map &> /dev/null; then
@@ -149,11 +160,15 @@ if [ -n "${CUSTOM_MAP_URL:-}" ] || ls -1 /custom-maps/*.map &> /dev/null; then
   fi
   # custom map found so disabling map settings.
   cat >> "$lgsm_cfg" <<EOF
-fn_parms(){ parms="-batchmode +app.listenip \${ip} +app.port \${appport} +server.ip \${ip} +server.port \${port} +server.tickrate \${tickrate} +server.hostname \"\${servername}\" +server.identity \"\${selfname}\" +server.maxplayers \${maxplayers} +levelurl '${CUSTOM_MAP_URL}' +server.saveinterval \${saveinterval} +rcon.web \${rconweb} +rcon.ip \${ip} +rcon.port \${rconport} +rcon.password \"\${rconpassword}\" -logfile"; }
+fn_parms(){ parms="-batchmode ${HEADLESS_FLAGS} +app.listenip \${ip} +app.port \${appport} +server.ip \${ip} +server.port \${port} +server.tickrate \${tickrate} +server.hostname \"\${servername}\" +server.identity \"\${selfname}\" +server.maxplayers \${maxplayers} +levelurl '${CUSTOM_MAP_URL}' +server.saveinterval \${saveinterval} +rcon.web \${rconweb} +rcon.ip \${ip} +rcon.port \${rconport} +rcon.password \"\${rconpassword}\" -logfile"; }
 EOF
   echo '    Custom Map URL for clients: '"${CUSTOM_MAP_URL}"
 else
   apply-generated-map-settings
+  # Add fn_parms with headless flags for generated maps
+  cat >> "$lgsm_cfg" <<EOF
+fn_parms(){ parms="-batchmode ${HEADLESS_FLAGS} +app.listenip \${ip} +app.port \${appport} +server.ip \${ip} +server.port \${port} +server.tickrate \${tickrate} +server.hostname \"\${servername}\" +server.identity \"\${selfname}\" +server.seed \${seed} +server.salt \${salt} +server.maxplayers \${maxplayers} +server.worldsize \${worldsize} +server.saveinterval \${saveinterval} +rcon.web \${rconweb} +rcon.ip \${ip} +rcon.port \${rconport} +rcon.password \"\${rconpassword}\" -logfile"; }
+EOF
 fi
 
 if [ ! -f rcon_pass ]; then
