@@ -50,10 +50,13 @@ if [ -f /server.cfg.template ]; then
     echo "Configuring server for PRODUCTION mode (public listing)"
     HOSTNAME="BusyDaddyRust"
     LISTING_CONTROL=""
+    SERVER_TAGS='server.tags "monthly,pve,rpg"'
   else
     echo "Configuring server for DEVELOPMENT mode (hidden from public)"
     HOSTNAME="BusyDaddyRust-dev"
     LISTING_CONTROL="# DEVELOPMENT SERVER - Hidden from public lists\nserver.official false\nserver.stability false"
+    # NO TAGS for dev server - this prevents public listing!
+    SERVER_TAGS="# server.tags disabled to keep dev server private"
   fi
   
   # Get server IP for logo URL
@@ -66,6 +69,7 @@ if [ -f /server.cfg.template ]; then
   sed -e "s/{{HOSTNAME}}/${HOSTNAME}/g" \
       -e "s|{{LISTING_CONTROL}}|${LISTING_CONTROL}|g" \
       -e "s/{{SERVER_IP}}/${SERVER_IP}/g" \
+      -e "s|{{SERVER_TAGS}}|${SERVER_TAGS}|g" \
       /server.cfg.template > serverfiles/server/rustserver/cfg/server.cfg
   
   echo "server.cfg generated for ${PRODUCTION} mode"
@@ -82,8 +86,16 @@ echo 'if [ ! "$1" = docker ]; then SERVERNAME="'"${SERVERNAME}"'" WORLDSIZE="'"$
 
 /utils/get-or-update-plugins.sh
 
+# Fix ownership of all plugin files to prevent LinuxGSM ownership check failures
+if [ -d /home/linuxgsm/serverfiles/oxide/plugins ]; then
+    sudo chown -R linuxgsm:linuxgsm /home/linuxgsm/serverfiles/oxide/plugins
+fi
+
 # Copy logo for WebRustPlus to serve
 /utils/copy-logo.sh
+
+# Run comprehensive ownership fix before server start to prevent LinuxGSM failures
+sudo /utils/fix-all-ownership.sh
 
 # Check if validation is needed (marker from crash detection or manual request)
 if [ -f /home/linuxgsm/VALIDATION_NEEDED ]; then

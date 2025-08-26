@@ -142,6 +142,8 @@ function remove_plugins() {
 function copy_custom_plugins() {
   if ls /custom-plugins/*.cs &> /dev/null; then
     rsync -a /custom-plugins/*.cs "${plugin_dir}/"
+    # Fix ownership of copied plugins
+    chown linuxgsm:linuxgsm "${plugin_dir}"/*.cs
   fi
 }
 

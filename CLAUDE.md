@@ -47,7 +47,7 @@ docker compose logs -f
 # Get RCON password
 ./admin/get-rcon-pass.sh
 
-# Execute RCON command
+# Execute RCON command (if rcon-command.sh exists)
 ./admin/rcon-command.sh "command here"
 
 # Interactive RCON shell
@@ -83,6 +83,20 @@ docker compose logs -f
 ./admin/import_prod_env.sh [package-file]
 ```
 
+### Git Operations
+```bash
+# Check changes
+git status
+git diff
+
+# Stage and commit changes
+git add -A
+git commit -m "message"
+
+# Push to remote
+git push origin main
+```
+
 ## Architecture Overview
 
 ### Container Initialization Flow
@@ -116,6 +130,14 @@ docker compose logs -f
 - Extracts C# class names from plugin source
 - Syncs custom-mods/ overriding uMod versions
 - Removes outdated plugins automatically
+
+**utils/startup-wrapper.sh** → Process wrapper
+- Ensures proper signal handling for graceful shutdown
+- Manages startup sequence and environment
+
+**utils/fix-all-ownership.sh** → Permission fixer
+- Corrects file ownership for linuxgsm user
+- Ensures proper permissions for server operation
 
 ### Volume and Port Strategy
 - **Named volume `lgsm`**: Persistent server data
@@ -158,16 +180,15 @@ tail -f /home/linuxgsm/log/crash-tracker.log
 ./admin/bugfix-oxide-plugins.sh
 ```
 
-### Console Command Execution
+### RCON Command Execution
 ```bash
 # RCON (returns output, works remotely)
-./admin/rcon-command.sh "oxide.version"
-
-# Direct console (full access, no output)
-./admin/console-command.sh "oxide.reload *"
-
-# Interactive RCON
 ./admin/rcon.sh
+# Then enter commands interactively
+
+# Direct console access requires entering container
+./admin/shell.sh
+./rustserver console
 ```
 
 ## Important Implementation Details
@@ -205,7 +226,7 @@ tail -f /home/linuxgsm/log/crash-tracker.log
 - All control through LinuxGSM commands (./rustserver)
 
 ### RCON Implementation Details
-- Internal tool: `rcon-command` installed via Dockerfile
+- Internal tool: `rcon-command` installed via Dockerfile (if available)
 - WebSocket-based client implementation
 - Password auto-discovery from process arguments
 - Alias shortcuts: `reload` → `oxide.reload *`

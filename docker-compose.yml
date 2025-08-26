@@ -68,6 +68,10 @@ services:
         if [ -d /home/linuxgsm/serverfiles/oxide/data ]; then
           chown -R linuxgsm: /home/linuxgsm/serverfiles/oxide/data
         fi
+        # Fix ownership of plugin directory to prevent LinuxGSM ownership check failures
+        if [ -d /home/linuxgsm/serverfiles/oxide/plugins ]; then
+          chown -R linuxgsm: /home/linuxgsm/serverfiles/oxide/plugins
+        fi
         rm -f ~linuxgsm/linuxgsm.sh
         su - linuxgsm -c "LINUX_GSM_VERSION=\"${LINUX_GSM_VERSION:-v20.4.1}\" SERVERNAME=\"${SERVERNAME}\" WORLDSIZE=\"${WORLDSIZE}\" SEED=\"${SEED}\" PRODUCTION=\"${PRODUCTION}\" /utils/custom-rust-server.sh"
     volumes:

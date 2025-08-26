@@ -28,7 +28,7 @@ server.headerimage "http://{{SERVER_IP}}:8888/busydaddyrust-logo.png"
 # Server tags help players find your server
 # Note: Some tags are automatically set (e.g., "hardcore" from GAMEMODE setting)
 # You can add up to 3 custom tags from different groups
-server.tags "monthly,pve,rpg"
+{{SERVER_TAGS}}
 
 #########################################
 # Additional Server Settings
