@@ -1,0 +1,39 @@
+{
+  "Spawn Settings": {
+    "Always Spawned": false,
+    "Spawn Time": 20.0,
+    "Destroy Time": 6.0,
+    "Spawn near players": true,
+    "Min pop for near player spawn": 5,
+    "Min distance from player": 30.0,
+    "Max distance from player": 120.0,
+    "Zombie Settings": {
+      "Display Name": "Night Walker",
+      "Scarecrow Population (total amount)": 500,
+      "Scarecrow Health": 250.0,
+      "Scarecrow Kits": []
+    },
+    "Chance Settings": {
+      "Chance per cycle": 100.0,
+      "Days betewen spawn": 0
+    }
+  },
+  "Destroy Settings": {
+    "Leave Corpse, when destroyed": false,
+    "Leave Corpse, when killed by player": true,
+    "Spawn Loot": true,
+    "Half bodybag despawn time": true
+  },
+  "Behaviour Settings": {
+    "Attack sleeping players": true,
+    "Zombies attacked by outpost sentries": true,
+    "Throw Grenades": true,
+    "Ignore Human NPCs": false,
+    "Ignored entities (full entity shortname)": [
+      "scarecrow.prefab"
+    ]
+  },
+  "Broadcast Settings": {
+    "Broadcast spawn amount": true
+  }
+}
