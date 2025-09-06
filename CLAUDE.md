@@ -265,10 +265,14 @@ mem_limit: 12gb
 - `WORLDSIZE`: Override map size
 - Variables propagate through Docker stages
 
-### Scheduled Tasks (via cron)
-- Daily restart: 6:00 AM
-- Weekly validation: Sunday 4:00 AM
-- Monthly wipe: First Thursday 9:00 PM
+### Scheduled Tasks (HOST SYSTEM CRON - BST/GMT timezone)
+- Daily restart: 6:00 AM local time (via host cron, rebuilds container)
+- Weekly validation: Sunday 4:00 AM UTC (via container cron)
+- Monthly wipe: First Thursday at EXACTLY 19:00 UTC (7:00 PM GMT / 2:00 PM EST)
+  - Synchronized with official Facepunch/Rust PC wipe time
+  - Auto-adjusts for daylight saving (runs at 19:00 GMT in winter, 20:00 BST in summer)
+  - Both times = 19:00 UTC exactly
+  - Container monthly wipe DISABLED to prevent double-wipe conflicts
 
 ## Directory Structure
 - `admin/` - Host-side management scripts
