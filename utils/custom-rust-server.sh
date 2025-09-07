@@ -50,7 +50,7 @@ if [ -f /server.cfg.template ]; then
     echo "Configuring server for PRODUCTION mode (public listing)"
     HOSTNAME="BusyDaddyRust"
     LISTING_CONTROL=""
-    SERVER_TAGS='server.tags "monthly,pve,rpg"'
+    SERVER_TAGS='server.tags "monthly,hardcore,pvp,zombies,raid_protection,skill_tree,upgradeable_vehicles,cross_wipe_storage"'
   else
     echo "Configuring server for DEVELOPMENT mode (hidden from public)"
     HOSTNAME="BusyDaddyRust-dev"
