@@ -6,6 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Dockerized Rust Dedicated Server using LinuxGSM for game server management. Single-container architecture with Oxide/uMod plugin support, automated crash recovery, and comprehensive administrative tooling.
 
+## Quick Reference
+- **Container name**: `lgsm`
+- **Primary user**: `linuxgsm` (UID/GID 1000)
+- **Server binary**: `/home/linuxgsm/rustserver`
+- **Game port**: 28015/UDP
+- **RCON port**: 28016/TCP
+- **Map download port**: 8000/TCP (custom maps only)
+
 ## Essential Commands
 
 ### Server Operations
@@ -35,11 +43,12 @@ docker compose logs -f
 # Fix plugin Linux compatibility issues
 ./admin/bugfix-oxide-plugins.sh
 
-# Reload plugins without restart
+# Reload plugins without restart (uses RCON)
 ./admin/reload-plugins.sh
 
 # Custom plugins: Place .cs files in custom-mods/
 # Plugin configs: Edit JSON files in mod-configs/
+# Plugin manifest: mod-configs/plugins.txt (one plugin name per line)
 ```
 
 ### RCON Access
@@ -47,11 +56,11 @@ docker compose logs -f
 # Get RCON password
 ./admin/get-rcon-pass.sh
 
-# Execute RCON command (if rcon-command.sh exists)
-./admin/rcon-command.sh "command here"
-
 # Interactive RCON shell
 ./admin/rcon.sh
+
+# Quick RCON reload
+./admin/docker-rcon-reload.sh
 
 # Connect via web: http://localhost:28016
 ```
@@ -83,18 +92,28 @@ docker compose logs -f
 ./admin/import_prod_env.sh [package-file]
 ```
 
-### Git Operations
+### Permissions Management
 ```bash
-# Check changes
-git status
-git diff
+# Apply comprehensive permissions
+./admin/apply-permissions.sh
 
-# Stage and commit changes
-git add -A
-git commit -m "message"
+# Quick permission fix (faster)
+./admin/apply-permissions-fast.sh
+```
 
-# Push to remote
-git push origin main
+### Map Management
+```bash
+# Regenerate map (wipes server data)
+./admin/regenerate-map.sh
+```
+
+### Host System Cron Setup
+```bash
+# Setup automated tasks on host
+./admin/setup-host-cron.sh
+
+# Remove host cron tasks
+./admin/remove-host-cron.sh
 ```
 
 ## Architecture Overview
@@ -140,7 +159,7 @@ git push origin main
 - Ensures proper permissions for server operation
 
 ### Volume and Port Strategy
-- **Named volume `lgsm`**: Persistent server data
+- **Named volume `lgsm`**: Persistent server data at `/home/linuxgsm`
 - **Bind mounts**: Configuration and custom content
 - **Read-only**: utils/ directory (security)
 - **Ports**: 
@@ -153,16 +172,16 @@ git push origin main
 1. `.env` file → Override key variables
 2. `docker-compose.yml` → Container settings
 3. `rust-environment.sh` → Primary server config
-4. LinuxGSM configs → Generated in container
+4. LinuxGSM configs → Generated in container at `/home/linuxgsm/lgsm/config-lgsm/rustserver/`
 
 ## Development Workflow
 
 ### Adding Plugins
-1. **uMod plugins**: Add to `mod-configs/plugins.txt`
+1. **uMod plugins**: Add plugin name to `mod-configs/plugins.txt` (without .cs extension)
 2. Run: `./admin/get-or-update-oxide-plugins.sh`
-3. **Custom plugins**: Place in `custom-mods/` (overrides uMod)
-4. Configure: Edit JSONs in `mod-configs/`
-5. Apply: `./admin/reload-plugins.sh`
+3. **Custom plugins**: Place .cs files in `custom-mods/` (overrides uMod versions)
+4. Configure: Edit JSON files in `mod-configs/`
+5. Apply: `./admin/reload-plugins.sh` or use RCON: `oxide.reload *`
 
 ### Debugging Issues
 ```bash
@@ -180,13 +199,26 @@ tail -f /home/linuxgsm/log/crash-tracker.log
 ./admin/bugfix-oxide-plugins.sh
 ```
 
+### Testing Custom Mods
+```bash
+# 1. Place .cs file in custom-mods/
+# 2. Sync plugins to server
+./admin/get-or-update-oxide-plugins.sh
+# 3. Reload to apply changes
+./admin/reload-plugins.sh
+# 4. Check logs for compilation errors
+docker compose logs -f | grep -i "Error while compiling"
+# 5. Monitor plugin loading
+docker compose logs -f | grep -i "Loaded plugin"
+```
+
 ### RCON Command Execution
 ```bash
-# RCON (returns output, works remotely)
+# Interactive RCON shell (preferred)
 ./admin/rcon.sh
 # Then enter commands interactively
 
-# Direct console access requires entering container
+# Direct console access (requires container access)
 ./admin/shell.sh
 ./rustserver console
 ```
@@ -226,15 +258,16 @@ tail -f /home/linuxgsm/log/crash-tracker.log
 - All control through LinuxGSM commands (./rustserver)
 
 ### RCON Implementation Details
-- Internal tool: `rcon-command` installed via Dockerfile (if available)
-- WebSocket-based client implementation
+- WebSocket-based client implementation in `admin/rcon.sh`
 - Password auto-discovery from process arguments
 - Alias shortcuts: `reload` → `oxide.reload *`
+- Supports both interactive and single-command modes
 
 ### Backup System Architecture
 - Includes: lgsm/, serverfiles/server/, serverfiles/oxide/
 - Format: Timestamped .tgz with date format
 - Error handling with trap cleanup
+- Excludes temporary and cache files
 
 ### Production Export/Import
 - Filters admin plugins (Godmode, Vanish)
@@ -247,14 +280,15 @@ tail -f /home/linuxgsm/log/crash-tracker.log
 ### rust-environment.sh Key Variables
 - `maxplayers`: Player limit (default: 50)
 - `worldsize`: Map size 1000-6000 (default: 3500)
-- `seed`: Map generation seed
-- `GAMEMODE`: vanilla/hardcore/softcore (hardcore enabled)
-- `ENABLE_RUST_EAC`: EAC toggle (disable for Linux clients)
-- `uptime_monitoring`: Auto-restart on crash
+- `seed`: Map generation seed (random if unset)
+- `GAMEMODE`: vanilla/hardcore/softcore (currently: hardcore)
+- `ENABLE_RUST_EAC`: EAC toggle (1=enabled, blocks Linux clients)
+- `uptime_monitoring`: Auto-restart on crash (enabled)
 - `custom_map_url`: Custom map download URL
 - `rconpassword`: Auto-generated if empty
+- `servername`: Server display name (override via SERVERNAME in .env)
 
-### Docker Resource Configuration
+### Docker Resource Configuration (docker-compose.yml)
 ```yaml
 cpu_count: 2
 mem_limit: 12gb
@@ -263,6 +297,8 @@ mem_limit: 12gb
 ### Environment Variables (.env)
 - `SERVERNAME`: Override server name
 - `WORLDSIZE`: Override map size
+- `SEED`: Override map seed
+- `PRODUCTION`: Production mode flag
 - Variables propagate through Docker stages
 
 ### Scheduled Tasks (HOST SYSTEM CRON - BST/GMT timezone)
@@ -283,3 +319,116 @@ mem_limit: 12gb
 - `harmony-mods/` - Additional mods for custom maps
 - `backups/` - Server backup storage
 - `admin/logs/` - Validation and tracking logs
+
+## Best Practices for This Codebase
+
+### Script Development
+- All admin scripts should check if server is running before operations
+- Use `docker compose exec lgsm` for container commands, not `docker exec`
+- Scripts modifying server state should use the restart_server.sh pattern (stop, modify, start)
+- Always preserve file permissions when copying files into container
+
+### Plugin Development
+- Plugin class name MUST match the expected Oxide naming convention
+- Custom plugins in `custom-mods/` take precedence over uMod versions
+- Always run `bugfix-oxide-plugins.sh` after adding new Linux-incompatible plugins
+- Plugin configs are auto-generated on first load, then persisted in `mod-configs/`
+
+### Container Operations
+- Never modify files directly in the container - use bind mounts or admin scripts
+- The container runs as root initially, then drops to linuxgsm user
+- Utils directory is mounted read-only for security
+- Server data persists in the `lgsm` named volume
+
+### RCON Commands Reference
+```bash
+# Common RCON commands via admin/rcon.sh
+oxide.reload *              # Reload all plugins
+oxide.reload PluginName     # Reload specific plugin
+oxide.unload PluginName     # Unload plugin
+oxide.load PluginName       # Load plugin
+o.grant group default permission.name  # Grant permission
+server.writecfg            # Save server config
+```
+
+## Testing and Validation
+
+### No Traditional Testing Framework
+This codebase uses operational validation instead of unit tests:
+- Server validation through LinuxGSM's Steam validation
+- Plugin compilation checking via Oxide logs
+- Runtime monitoring for crashes and errors
+- No formal linting for shell scripts (consider shellcheck)
+- No unit/integration test suites
+
+### Validating Changes
+```bash
+# After plugin changes
+docker compose logs -f | grep -i "Loaded plugin\|Error while compiling"
+
+# After configuration changes
+docker compose exec lgsm ./rustserver details
+
+# After Docker changes
+docker compose build --no-cache
+docker compose up -d
+docker compose logs -f
+```
+
+## Common Troubleshooting
+
+### Server Won't Start
+```bash
+# Check for validation marker
+ls admin/logs/VALIDATION_NEEDED
+# If exists, validate
+./admin/validate-server.sh
+# Check crash history
+./admin/validation-status.sh
+```
+
+### Plugin Not Loading
+```bash
+# Check for Linux compatibility issues
+./admin/bugfix-oxide-plugins.sh
+# Verify plugin is in correct location
+docker compose exec lgsm ls /home/linuxgsm/serverfiles/oxide/plugins/
+# Check compilation errors
+docker compose logs | grep -A5 "Error while compiling"
+# Verify plugin class name matches filename
+docker compose logs | grep "Unable to find main plugin class"
+```
+
+### RCON Connection Issues
+```bash
+# Verify RCON password
+./admin/get-rcon-pass.sh
+# Check RCON is running
+docker compose exec lgsm ss -tlnp | grep 28016
+# Test RCON connectivity
+./admin/rcon.sh "say test"
+```
+
+### Permission Issues
+```bash
+# Quick fix for most permission problems
+./admin/apply-permissions-fast.sh
+# Full permission reset (slower but comprehensive)
+./admin/apply-permissions.sh
+```
+
+## Key Script Behaviors
+
+### Docker Compose Exec vs Docker Exec
+- **Always use**: `docker compose exec lgsm` (respects compose context)
+- **Never use**: `docker exec lgsm` (bypasses compose configuration)
+
+### Script Exit Patterns
+- Admin scripts typically check if server is running before operations
+- Scripts that modify server state follow: stop → modify → start pattern
+- Most scripts exit with meaningful error codes for automation
+
+### File Change Detection
+- Plugin updates use SHA256 hashing in `/tmp/plugin_hashes/`
+- Configuration changes require server restart or RCON reload
+- Docker image changes require `docker compose build --no-cache`

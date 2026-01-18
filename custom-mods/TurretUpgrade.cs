@@ -88,8 +88,28 @@ namespace Oxide.Plugins
                 var turret = vehicleTurrets[vehicle.net.ID.Value];
                 if (turret != null && !turret.IsDestroyed)
                 {
-                    // Save inventory items before destroying
+                    // Drop all items and materials before destroying
                     DropTurretInventory(turret);
+                    
+                    // Drop the upgrade materials at the turret's position
+                    var dropPosition = turret.transform.position;
+                    
+                    // Drop the auto turret item
+                    var turretItem = ItemManager.CreateByName("autoturret", 1);
+                    if (turretItem != null)
+                    {
+                        turretItem.Drop(dropPosition + Vector3.up * 0.5f, Vector3.up * 2f);
+                        Puts($"[TurretUpgrade] Dropped auto turret at {dropPosition}");
+                    }
+                    
+                    // Drop the wire tool
+                    var wireItem = ItemManager.CreateByName("wiretool", 1);
+                    if (wireItem != null)
+                    {
+                        wireItem.Drop(dropPosition + Vector3.up * 0.5f, Vector3.up * 2f + Vector3.right * 0.5f);
+                        Puts($"[TurretUpgrade] Dropped wire tool at {dropPosition}");
+                    }
+                    
                     intentionallyDestroyedTurrets.Add(turret.net.ID);
                     turret.Kill();
                 }
@@ -201,7 +221,29 @@ namespace Oxide.Plugins
             
             if (vehicleId > 0)
             {
-                Puts($"[TurretUpgrade] Turret destroyed on vehicle {vehicleId}, removing upgrade");
+                Puts($"[TurretUpgrade] Turret destroyed on vehicle {vehicleId}, dropping all materials and removing upgrade");
+                
+                // Drop turret inventory (weapons and ammo)
+                DropTurretInventory(turret);
+                
+                // Drop the upgrade materials (turret and wire tool) at the turret's position
+                var dropPosition = turret.transform.position;
+                
+                // Drop the auto turret item
+                var turretItem = ItemManager.CreateByName("autoturret", 1);
+                if (turretItem != null)
+                {
+                    turretItem.Drop(dropPosition + Vector3.up * 0.5f, Vector3.up * 2f);
+                    Puts($"[TurretUpgrade] Dropped auto turret at {dropPosition}");
+                }
+                
+                // Drop the wire tool
+                var wireItem = ItemManager.CreateByName("wiretool", 1);
+                if (wireItem != null)
+                {
+                    wireItem.Drop(dropPosition + Vector3.up * 0.5f, Vector3.up * 2f + Vector3.right * 0.5f);
+                    Puts($"[TurretUpgrade] Dropped wire tool at {dropPosition}");
+                }
                 
                 // Remove from our tracking
                 vehicleTurrets.Remove(vehicleId);
@@ -579,13 +621,23 @@ namespace Oxide.Plugins
                 // Different cockpit types have different shapes
                 if (cockpitModule.name.Contains("armored"))
                 {
-                    // Armored cockpit is taller
+                    // Armored cockpit is taller and already has good clearance
                     heightAdjust += 0.1f;
+                    Puts($"[TurretUpgrade] Detected armored cockpit - applying height adjustment of {heightAdjust}");
                 }
-                else if (cockpitModule.name.Contains("with_engine"))
+                else if (cockpitModule.name.Contains("1module_cockpit"))
                 {
-                    // Cockpit with engine might need forward adjustment
-                    forwardAdjust -= 0.2f;
+                    // Single module cockpit with integrated engine - match armored cockpit positioning
+                    heightAdjust += 0.1f;  // Same as armored cockpit
+                    // No forward adjustment - same as armored
+                    Puts($"[TurretUpgrade] Detected integrated cockpit - applying same positioning as armored");
+                }
+                else
+                {
+                    // Standard unarmored cockpit - match armored cockpit positioning
+                    heightAdjust += 0.1f;  // Same as armored cockpit
+                    // No forward adjustment - same as armored
+                    Puts($"[TurretUpgrade] Detected standard cockpit - applying same positioning as armored");
                 }
                 
                 // Apply configured offsets
@@ -1651,3 +1703,4 @@ namespace Oxide.Plugins
     }
 }// Recompile Fri 29 Aug 2025 09:51:36 PM BST
 // Force recompile Fri 29 Aug 2025 10:06:01 PM BST
+// Force recompile Tue 09 Sep 2025 09:39:10 PM BST
